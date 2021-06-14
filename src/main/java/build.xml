@@ -1,0 +1,28 @@
+<project name="shees">
+    <property name="javacc.home" value="../../../target/"/>
+    <property name="sampleDir" value="."/>
+
+    <target name="clean">
+        <delete dir="${sampleDir}/java"/>
+        <delete dir="${sampleDir}/classes"/>
+        <mkdir dir="${sampleDir}/java"/>
+        <mkdir dir="${sampleDir}/classes"/>
+    </target>
+
+    <target name="compile" depends="clean">
+<!--        <copy file="CustomDumpVisitor.java" todir="${sampleDir}/java"/>-->
+<!--        <copy file="CustomParserVisitor.java" todir="${sampleDir}/java"/>-->
+        <copy file="ASTCommand.java" todir="${sampleDir}/java"/>
+        <copy file="ASTDirOrNode.java" todir="${sampleDir}/java"/>
+        <copy file="ASTPath.java" todir="${sampleDir}/java"/>
+        <copy file="ASTNewElement.java" todir="${sampleDir}/java"/>
+        <copy file="ASTCondition.java" todir="${sampleDir}/java"/>
+        <copy file="ASTConditionItem.java" todir="${sampleDir}/java"/>
+        <copy file="ASTSubCondition.java" todir="${sampleDir}/java"/>
+        <copy file="ASTCompareSign.java" todir="${sampleDir}/java"/>
+        <copy file="ASTAndOr.java" todir="${sampleDir}/java"/>
+        <jjtree target="CustomParser.jjt" outputdirectory="${sampleDir}/java" javacchome="${javacc.home}"/>
+        <javacc target="${sampleDir}/java/CustomParser.jj" outputdirectory="${sampleDir}/java" javacchome="${javacc.home}"> </javacc>
+        <javac srcdir="${sampleDir}/java" destdir="${sampleDir}/classes"/>
+    </target>
+</project>

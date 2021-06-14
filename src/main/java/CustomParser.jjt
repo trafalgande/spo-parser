@@ -1,0 +1,103 @@
+options {
+  MULTI=true;
+  NODE_DEFAULT_VOID=true;
+}
+
+PARSER_BEGIN(CustomParser)
+
+public class CustomParser {
+    public static void main(String[] args) {
+       CustomParser customParser = new CustomParser(System.in);
+       try {
+           ASTStart root = customParser.Start();
+           root.dump("");
+       } catch (Exception e) {
+         System.out.println(e.getMessage());
+         e.printStackTrace();
+       }
+    }
+}
+
+
+PARSER_END(CustomParser)
+
+SKIP : { " " | "\t" }
+
+TOKEN : { <EOL : "\n" | "\r" | "\r\n" > }
+
+TOKEN : {
+    <CMD: "create" | "read" | "update" | "delete" >
+        | <DIR_OR_NODE: "dir" | "node"  >
+
+    | <#LETTER: ["a"-"z", "A"-"Z"] >
+    | <#DOT : "." >
+    | <WORD: (<LETTER>)+ >
+
+    | <PATH: (<WORD>(<DOT>)?)+ | <DOT> >
+
+    | <#eq: "=" >
+    | <#gt: ">" >
+    | <#lt: "<" >
+    | <COMPARE: <eq> | <gt> | <lt> >
+
+    | <#and: " & " >
+    | <#or: " | " >
+    | <AND_OR: <and> | <or> >
+}
+
+ASTStart Start() : {}
+{
+  Input() <EOL>
+  { return jjtThis; }
+}
+
+void Input() #void : {}
+{
+    Command() ( DirOrNode() )? Path()( NewElement() )?( Condition() )?
+}
+
+void Path() : {Token t;}
+{
+    t=<PATH> {jjtThis.setName(t.image);}
+}
+
+void DirOrNode() : {Token t;}
+{
+    t=<DIR_OR_NODE> {jjtThis.setName(t.image);}
+}
+
+void Command() : {Token t;}
+{
+    t=<CMD> {jjtThis.setName(t.image);}
+}
+
+void Condition() : {}
+{
+    "[" ( SubCondition() (AndOr() SubCondition())? )+ "]"
+}
+
+void SubCondition() : {}
+{
+    ConditionItem() CompareSign() ConditionItem()
+}
+
+void ConditionItem() : {Token t;}
+{
+    t=<WORD> {jjtThis.setName(t.image);}
+}
+
+void CompareSign() : {Token t;}
+{
+    t=<COMPARE> {jjtThis.setName(t.image);}
+}
+
+void AndOr(): {Token t;}
+{
+    t=<AND_OR> {jjtThis.setName(t.next.image);}
+}
+
+void NewElement() : {Token t;}
+{
+    t="!"<WORD> {jjtThis.setName(t.next.image);}
+}
+
