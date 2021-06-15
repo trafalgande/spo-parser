@@ -7,10 +7,61 @@ PARSER_BEGIN(CustomParser)
 
 public class CustomParser {
     public static void main(String[] args) {
-       CustomParser customParser = new CustomParser(System.in);
+       CustomParser customParser = new CustomParser(System.in(args));
        try {
            ASTStart root = customParser.Start();
            root.dump("");
+           JsonDTO jsonDTO = new JsonDTO();
+           com.google.gson.Gson gson = new com.google.gson.Gson();
+           for(int i = 0; i < root.jjtGetNumChildren(); i++) {
+               Node current = root.jjtGetChild(i);
+                   if (current.toString().contains(":")) {
+                       String[] split = current.toString().split(":");
+                       switch (split[0]) {
+                              case "Command" : {
+                                  jsonDTO.setCmd(split[1].trim());
+                                  break;
+                              }
+                              case "Param" : {
+                                  jsonDTO.setParam(split[1].trim());
+                                  break;
+                              }
+                              case "Path" : {
+                                  jsonDTO.setPath(split[1].trim());
+                                  break;
+                              }
+                              case "New Element" : {
+                                  jsonDTO.setNelem(split[1].trim());
+                                  break;
+                              }
+                          }
+                   }
+                   if (current.jjtGetNumChildren() > 0) {
+                   for(int j = 0; j < current.jjtGetNumChildren(); j++) {
+                       Node subCurrent = current.jjtGetChild(j);
+                       if (subCurrent.jjtGetNumChildren() > 0) {
+                           for(int k = 0; k < subCurrent.jjtGetNumChildren(); k++) {
+                               Node subSubCurrent = subCurrent.jjtGetChild(k);
+                                if (subSubCurrent.toString().contains(":")) {
+                                  String[] split = subSubCurrent.toString().split(":");
+                                  switch (split[0]) {
+                                      case "Sign" : {
+                                          jsonDTO.setSign(split[1].trim());
+                                          break;
+                                      }
+                                      case "Right Item" : {
+                                          jsonDTO.setRight(split[1].trim());
+                                          break;
+                                      }
+                                  }
+                              }
+                           }
+                       }
+                   }
+               }
+           }
+           String json = gson.toJson(jsonDTO);
+          System.out.println(json);
        } catch (Exception e) {
          System.out.println(e.getMessage());
          e.printStackTrace();
@@ -45,58 +96,59 @@ TOKEN : {
     | <AND_OR: <and> | <or> >
 }
 
-ASTStart Start() : {}
+ASTStart Start() #Start : {}
 {
   Input() <EOL>
   { return jjtThis; }
 }
 
-void Input() #void : {}
+void Input() : {}
 {
     Command() ( DirOrNode() )? Path()( NewElement() )?( Condition() )?
 }
 
-void Path() : {Token t;}
+void Path() #Path : {Token t;}
 {
     t=<PATH> {jjtThis.setName(t.image);}
 }
 
-void DirOrNode() : {Token t;}
+void DirOrNode() #DirOrNode : {Token t;}
 {
     t=<DIR_OR_NODE> {jjtThis.setName(t.image);}
 }
 
-void Command() : {Token t;}
+void Command() #Command : {Token t;}
 {
     t=<CMD> {jjtThis.setName(t.image);}
 }
 
-void Condition() : {}
+void Condition() #Condition : {}
 {
     "[" ( SubCondition() (AndOr() SubCondition())? )+ "]"
 }
 
-void SubCondition() : {}
+void SubCondition() #SubCondition : {}
 {
-    ConditionItem() CompareSign() ConditionItem()
+    <WORD> CompareSign() ConditionItem()
 }
 
-void ConditionItem() : {Token t;}
+
+void ConditionItem() #ConditionItem : {Token t;}
 {
     t=<WORD> {jjtThis.setName(t.image);}
 }
 
-void CompareSign() : {Token t;}
+void CompareSign() #CompareSign : {Token t;}
 {
     t=<COMPARE> {jjtThis.setName(t.image);}
 }
 
-void AndOr(): {Token t;}
+void AndOr() #AndOr : {Token t;}
 {
-    t=<AND_OR> {jjtThis.setName(t.next.image);}
+    t=<AND_OR> {jjtThis.setName(t.image);}
 }
 
-void NewElement() : {Token t;}
+void NewElement() #NewElement : {Token t;}
 {
     t="!"<WORD> {jjtThis.setName(t.next.image);}
 }

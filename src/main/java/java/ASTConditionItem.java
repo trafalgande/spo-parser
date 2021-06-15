@@ -11,6 +11,6 @@ public class ASTConditionItem extends SimpleNode {
     }
 
     public String toString() {
-        return "Item: " + name;
+        return "Right Item: " + name;
     }
 }

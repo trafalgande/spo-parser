@@ -1,6 +1,18 @@
-<project name="shees">
+<project xmlns:ivy="antlib:org.apache.ivy.ant" name="shees">
     <property name="javacc.home" value="../../../target/"/>
     <property name="sampleDir" value="."/>
+    <property name="libs.dir" value="./lib"/>
+
+    <target name="bootstrap" description="Install ivy">
+        <mkdir dir="${user.home}/.ant/lib"/>
+        <get dest="${user.home}/.ant/lib/ivy.jar" src="http://search.maven.org/remotecontent?filepath=org/apache/ivy/ivy/2.3.0/ivy-2.3.0.jar"/>
+    </target>
+
+    <target name="resolve" description="Use ivy to resolve classpaths">
+        <ivy:resolve/>
+        <ivy:report todir='build/ivy-reports' graph='false' xml='false'/>
+        <ivy:cachepath pathid="default.path" conf="default"/>
+    </target>
 
     <target name="clean">
         <delete dir="${sampleDir}/java"/>
@@ -9,20 +21,29 @@
         <mkdir dir="${sampleDir}/classes"/>
     </target>
 
+    <path id="build-classpath">
+        <fileset dir="${libs.dir}">
+            <include name="*.jar"/>
+        </fileset>
+        <pathelement path= "${sampleDir}/classes"/>
+    </path>
+
     <target name="compile" depends="clean">
-<!--        <copy file="CustomDumpVisitor.java" todir="${sampleDir}/java"/>-->
-<!--        <copy file="CustomParserVisitor.java" todir="${sampleDir}/java"/>-->
-        <copy file="ASTCommand.java" todir="${sampleDir}/java"/>
-        <copy file="ASTDirOrNode.java" todir="${sampleDir}/java"/>
-        <copy file="ASTPath.java" todir="${sampleDir}/java"/>
-        <copy file="ASTNewElement.java" todir="${sampleDir}/java"/>
-        <copy file="ASTCondition.java" todir="${sampleDir}/java"/>
-        <copy file="ASTConditionItem.java" todir="${sampleDir}/java"/>
-        <copy file="ASTSubCondition.java" todir="${sampleDir}/java"/>
-        <copy file="ASTCompareSign.java" todir="${sampleDir}/java"/>
-        <copy file="ASTAndOr.java" todir="${sampleDir}/java"/>
+        <ivy:retrieve conf="default"/>
+        <ivy:cachepath pathid="default.path" conf="default"/>
+
+        <copy todir="${sampleDir}/java">
+            <fileset dir="${basedir}" includes="*.java"/>
+        </copy>
         <jjtree target="CustomParser.jjt" outputdirectory="${sampleDir}/java" javacchome="${javacc.home}"/>
-        <javacc target="${sampleDir}/java/CustomParser.jj" outputdirectory="${sampleDir}/java" javacchome="${javacc.home}"> </javacc>
-        <javac srcdir="${sampleDir}/java" destdir="${sampleDir}/classes"/>
+        <javacc target="${sampleDir}/java/CustomParser.jj" outputdirectory="${sampleDir}/java"
+                javacchome="${javacc.home}"/>
+        <javac srcdir="${sampleDir}/java" destdir="${sampleDir}/classes">
+            <classpath>
+                <fileset dir="${libs.dir}">
+                    <include name="**/*.jar" />
+                </fileset>
+            </classpath>
+        </javac>
     </target>
 </project>

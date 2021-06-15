@@ -1,8 +1,7 @@
-public class ASTConditionItem extends SimpleNode {
-
+public class ASTDirOrNode extends SimpleNode {
     private String name;
 
-    public ASTConditionItem(int i) {
+    public ASTDirOrNode(int i) {
         super(i);
     }
 
@@ -11,6 +10,7 @@ public class ASTConditionItem extends SimpleNode {
     }
 
     public String toString() {
-        return "Right Item: " + name;
+        return "Param: " + name;
     }
+
 }
