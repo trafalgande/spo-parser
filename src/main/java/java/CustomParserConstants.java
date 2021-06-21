@@ -15,27 +15,31 @@ public interface CustomParserConstants {
   /** RegularExpression Id. */
   int DIR_OR_NODE = 5;
   /** RegularExpression Id. */
-  int LETTER = 6;
+  int QUOTE = 6;
   /** RegularExpression Id. */
-  int DOT = 7;
+  int LETTER = 7;
   /** RegularExpression Id. */
-  int WORD = 8;
+  int DIGIT = 8;
   /** RegularExpression Id. */
-  int PATH = 9;
+  int DOT = 9;
   /** RegularExpression Id. */
-  int eq = 10;
+  int WORD = 10;
   /** RegularExpression Id. */
-  int gt = 11;
+  int PATH = 11;
   /** RegularExpression Id. */
-  int lt = 12;
+  int eq = 12;
   /** RegularExpression Id. */
-  int COMPARE = 13;
+  int gt = 13;
   /** RegularExpression Id. */
-  int and = 14;
+  int lt = 14;
   /** RegularExpression Id. */
-  int or = 15;
+  int COMPARE = 15;
   /** RegularExpression Id. */
-  int AND_OR = 16;
+  int and = 16;
+  /** RegularExpression Id. */
+  int or = 17;
+  /** RegularExpression Id. */
+  int AND_OR = 18;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -48,7 +52,9 @@ public interface CustomParserConstants {
     "<EOL>",
     "<CMD>",
     "<DIR_OR_NODE>",
+    "<QUOTE>",
     "<LETTER>",
+    "<DIGIT>",
     "\".\"",
     "<WORD>",
     "<PATH>",
@@ -56,9 +62,11 @@ public interface CustomParserConstants {
     "\">\"",
     "\"<\"",
     "<COMPARE>",
-    "\" & \"",
-    "\" | \"",
+    "\"&&\"",
+    "\"||\"",
     "<AND_OR>",
+    "\"with value\"",
+    "\"with values\"",
     "\"[\"",
     "\"]\"",
     "\"!\"",

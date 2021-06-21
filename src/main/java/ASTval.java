@@ -1,8 +1,8 @@
-public class ASTAndOr extends SimpleNode {
+public class ASTval extends SimpleNode {
 
     private String name;
 
-    public ASTAndOr(int i) {
+    public ASTval(int i) {
         super(i);
     }
 
@@ -11,6 +11,7 @@ public class ASTAndOr extends SimpleNode {
     }
 
     public String toString() {
-        return "and_or: " + name;
+        return "value: " + name;
     }
+
 }

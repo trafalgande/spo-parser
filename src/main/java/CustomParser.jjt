@@ -5,9 +5,21 @@ options {
 
 PARSER_BEGIN(CustomParser)
 
+import java.io.FileNotFoundException;
+import java.util.*;
+
 public class CustomParser {
     public static void main(String[] args) {
-       CustomParser customParser = new CustomParser(System.in(args));
+       CustomParser customParser = null;
+       if (args.length < 1) {
+           customParser = new CustomParser(System.in);
+       } else {
+           try {
+                customParser = new CustomParser(new java.io.DataInputStream(new java.io.FileInputStream(args[0])));
+           } catch(FileNotFoundException e) {
+                customParser = new CustomParser(System.in);
+           }
+       }
        try {
            ASTStart root = customParser.Start();
            root.dump("");
@@ -37,34 +49,51 @@ public class CustomParser {
                           }
                    }
                    if (current.jjtGetNumChildren() > 0) {
+                       ArrayList list = new ArrayList();
+                       ArrayList condList = new ArrayList();
+                       String and_or = "";
                    for(int j = 0; j < current.jjtGetNumChildren(); j++) {
                        Node subCurrent = current.jjtGetChild(j);
+                         if ("and_or".equals(subCurrent.toString().split(":")[0])) {
+                                                         and_or = subCurrent.toString().split(":")[1].trim();
+                                                         list.add("&&".equals(and_or) ? 1 : 0);
+                                                  }
                        if (subCurrent.jjtGetNumChildren() > 0) {
+                          SubCondDTO subCondDTO = new SubCondDTO();
                            for(int k = 0; k < subCurrent.jjtGetNumChildren(); k++) {
                                Node subSubCurrent = subCurrent.jjtGetChild(k);
+
                                 if (subSubCurrent.toString().contains(":")) {
                                   String[] split = subSubCurrent.toString().split(":");
                                   switch (split[0]) {
-                                      case "Sign" : {
-                                          jsonDTO.setSign(split[1].trim());
-                                          break;
+                                      case "key" : {
+                                         subCondDTO.setKey(split[1].trim());
+                                         break;
                                       }
-                                      case "Right Item" : {
-                                          jsonDTO.setRight(split[1].trim());
-                                          break;
-                                      }
+                                     case "value" : {
+                                         subCondDTO.setValue(split[1].trim());
+                                         break;
+                                     }
+                                     case "Sign": {
+                                         subCondDTO.setSign(split[1].trim());
+                                         break;
+                                     }
                                   }
                               }
                            }
+                           jsonDTO.append(subCondDTO);
+                            jsonDTO.setGlobal_sign(list);
                        }
                    }
+
                }
            }
+
            String json = gson.toJson(jsonDTO);
-          System.out.println(json);
+           System.out.println(json);
        } catch (Exception e) {
-         System.out.println(e.getMessage());
-         e.printStackTrace();
+//           System.out.print("\t[-] Wrong input\n>\t");
+           System.out.println(e.getMessage());
        }
     }
 }
@@ -78,21 +107,23 @@ TOKEN : { <EOL : "\n" | "\r" | "\r\n" > }
 
 TOKEN : {
     <CMD: "create" | "read" | "update" | "delete" >
-        | <DIR_OR_NODE: "dir" | "node"  >
+    | <DIR_OR_NODE: "dir" | "node"  >
 
+    | <QUOTE: "\'" | "\"">
     | <#LETTER: ["a"-"z", "A"-"Z"] >
+    | <#DIGIT: ["0"-"9"] >
     | <#DOT : "." >
-    | <WORD: (<LETTER>)+ >
-
-    | <PATH: (<WORD>(<DOT>)?)+ | <DOT> >
+    | <WORD: (<LETTER>)+ | (<DIGIT>)+ >
+    | <PATH: <DOT> | (<WORD>(<DOT>)?)+ >
 
     | <#eq: "=" >
+    | <#neq: "!=" >
     | <#gt: ">" >
     | <#lt: "<" >
-    | <COMPARE: <eq> | <gt> | <lt> >
+    | <COMPARE: <eq> | <neq> | <gt> | <lt> >
 
-    | <#and: " & " >
-    | <#or: " | " >
+    | <#and: "&&" >
+    | <#or: "||" >
     | <AND_OR: <and> | <or> >
 }
 
@@ -104,7 +135,7 @@ ASTStart Start() #Start : {}
 
 void Input() : {}
 {
-    Command() ( DirOrNode() )? Path()( NewElement() )?( Condition() )?
+    Command() ( DirOrNode() )? Path()( NewElement() )?(("with value" | "with values") "[" Condition() "]")?
 }
 
 void Path() #Path : {Token t;}
@@ -124,19 +155,24 @@ void Command() #Command : {Token t;}
 
 void Condition() #Condition : {}
 {
-    "[" ( SubCondition() (AndOr() SubCondition())? )+ "]"
+    SubCondition() [(AndOr() SubCondition())+]
 }
 
 void SubCondition() #SubCondition : {}
 {
-    <WORD> CompareSign() ConditionItem()
+    key() CompareSign() (val() | <QUOTE> val() <QUOTE>)
 }
 
-
-void ConditionItem() #ConditionItem : {Token t;}
+void key() #key : {Token t;}
 {
     t=<WORD> {jjtThis.setName(t.image);}
 }
+
+void val() #val : {Token t;}
+{
+    t=<WORD> {jjtThis.setName(t.image);}
+}
+
 
 void CompareSign() #CompareSign : {Token t;}
 {

@@ -11,6 +11,6 @@ public class ASTAndOr extends SimpleNode {
     }
 
     public String toString() {
-        return "Command: " + name;
+        return "and_or: " + name;
     }
 }
