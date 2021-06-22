@@ -16,10 +16,13 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
        }
        try {
            ASTStart root = customParser.Start();
-           root.dump("");
+//           root.dump("");
            JsonDTO jsonDTO = new JsonDTO();
+           ElementDTO elementDTO = null;
+           List paths = new ArrayList();
            com.google.gson.Gson gson = new com.google.gson.Gson();
            for(int i = 0; i < root.jjtGetNumChildren(); i++) {
+               String currentPath = "";
                Node current = root.jjtGetChild(i);
                    if (current.toString().contains(":")) {
                        String[] split = current.toString().split(":");
@@ -33,62 +36,142 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
                                   break;
                               }
                               case "Path" : {
-                                  jsonDTO.setPath(split[1].trim());
+                                  currentPath = split[1].trim().substring(1);
                                   break;
                               }
-                              case "New Element" : {
-                                  jsonDTO.setNelem(split[1].trim());
+                              case "New element key" : {
+                                  elementDTO = new ElementDTO();
+                                  elementDTO.setElementKey(split[1].trim());
+                                  break;
+                              }
+                              case "New element": {
+                                  if (current.jjtGetChild(0).jjtGetNumChildren() > 0) {
+                                      if (elementDTO == null) elementDTO = new ElementDTO();
+                                      List values = new ArrayList();
+                                      for (int h = 0; h < current.jjtGetNumChildren() ; h++) {
+                                          ElementInitValuesDTO valuesDTO = new ElementInitValuesDTO();
+                                          for(int g = 0; g < current.jjtGetChild(h).jjtGetNumChildren() ; g++) {
+                                              Node elementLeaf = current.jjtGetChild(h).jjtGetChild(g);
+                                               if (elementLeaf.toString().contains(":")) {
+                                                   String[] split_ = elementLeaf.toString().split(":");
+                                                   switch (split_[0]) {
+                                                       case "key" : {
+                                                           valuesDTO.setInit_value_key(split_[1].trim());
+                                                           break;
+                                                       }
+                                                       case "value" : {
+                                                           String utfval = split_[1].trim();
+                                                           try {
+                                                               Integer intval = Integer.parseInt(utfval);
+                                                               valuesDTO.setInt_value(intval);
+                                                           } catch (Exception e) {
+                                                               valuesDTO.setUtf_value(utfval);
+                                                           }
+                                                       }
+                                                   }
+                                               }
+                                            }
+                                            values.add(valuesDTO);
+                                      }
+
+                                      elementDTO.setElement_init_values(values);
+                                      elementDTO.setInit_values_n(values.size());
+                                  }
                                   break;
                               }
                           }
                    }
+                       ArrayList conds = null;
+                       ArrayList operators = null;
                    if (current.jjtGetNumChildren() > 0) {
-                       ArrayList list = new ArrayList();
-                       ArrayList condList = new ArrayList();
+                       operators = new ArrayList();
+                       conds = new ArrayList();
                        String and_or = "";
                    for(int j = 0; j < current.jjtGetNumChildren(); j++) {
                        Node subCurrent = current.jjtGetChild(j);
                          if ("and_or".equals(subCurrent.toString().split(":")[0])) {
                                                          and_or = subCurrent.toString().split(":")[1].trim();
-                                                         list.add("&&".equals(and_or) ? 1 : 0);
+                                                         operators.add("&&".equals(and_or) ? 1 : 0);
                                                   }
                        if (subCurrent.jjtGetNumChildren() > 0) {
                           SubCondDTO subCondDTO = new SubCondDTO();
                            for(int k = 0; k < subCurrent.jjtGetNumChildren(); k++) {
                                Node subSubCurrent = subCurrent.jjtGetChild(k);
-
                                 if (subSubCurrent.toString().contains(":")) {
                                   String[] split = subSubCurrent.toString().split(":");
                                   switch (split[0]) {
-                                      case "key" : {
+                                     case "key" : {
                                          subCondDTO.setKey(split[1].trim());
                                          break;
                                       }
                                      case "value" : {
-                                         subCondDTO.setValue(split[1].trim());
+                                         String val = split[1].trim();
+                                         try {
+                                             int intval = Integer.parseInt(val);
+                                             subCondDTO.setInt_value(intval);
+                                         } catch (Exception e) {
+                                             subCondDTO.setUtf_value(val);
+                                         }
                                          break;
                                      }
                                      case "Sign": {
                                          subCondDTO.setSign(split[1].trim());
                                          break;
                                      }
+                                     case "asterisk": {
+                                         currentPath = split[1].trim();
+                                         break;
+                                     }
                                   }
                               }
                            }
-                           jsonDTO.append(subCondDTO);
-                            jsonDTO.setGlobal_sign(list);
+                                conds.add(subCondDTO);
                        }
                    }
-
                }
-           }
-
+                   if (!"".equals(currentPath)) {
+                       switch (jsonDTO.getCmd()) {
+                       case "delete": {
+                         if (conds == null)
+                             jsonDTO.append(new PathDTO(currentPath));
+                         else if ("*".equals(currentPath))
+                            jsonDTO.append(new PathDTO(currentPath));
+                         else
+                            jsonDTO.append(new PathDTO(currentPath, conds, operators, conds.size()));
+                         break;
+                       }
+                       case "update":
+                       case "create":   {
+                           jsonDTO.append(new PathDTO(currentPath));
+                            break;
+                       }
+                       case "read": {
+                           if ((currentPath+".").equals("..")) {
+                                   jsonDTO.setFrom_root(0);
+                           } else
+                            if (currentPath.contains(".")) {
+                                for (String s : currentPath.split("\\."))
+                                    jsonDTO.append(new PathDTO(s));
+                              } else if (conds == null)
+                                  jsonDTO.append(new PathDTO(currentPath));
+                              else if ("*".equals(currentPath))
+                                 jsonDTO.append(new PathDTO(currentPath));
+                              else
+                                 jsonDTO.append(new PathDTO(currentPath, conds, operators, conds.size()));
+                              break;
+                           }
+                       }
+                   }
+       }
+           jsonDTO.setNelem(elementDTO);
+           jsonDTO.setPaths_n(jsonDTO.getPaths()!= null ? jsonDTO.getPaths().size() : null);
            String json = gson.toJson(jsonDTO);
            System.out.println(json);
        } catch (Exception e) {
-//           System.out.print("\t[-] Wrong input\n>\t");
-           System.out.println(e.getMessage());
+           System.out.print("\t[-] Wrong input\n>\t");
+//           System.out.println(e.getMessage());
        }
+
     }
 
   static final public ASTStart Start() throws ParseException {
@@ -134,50 +217,118 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
       jj_la1[0] = jj_gen;
       ;
     }
-    Path();
+    jj_consume_token(21);
+    label_1:
+    while (true) {
+      FullPath();
+      switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+      case PATH:
+        ;
+        break;
+      default:
+        jj_la1[1] = jj_gen;
+        break label_1;
+      }
+    }
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-    case 23:
+    case 28:
       NewElement();
       break;
     default:
-      jj_la1[1] = jj_gen;
+      jj_la1[2] = jj_gen;
       ;
     }
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-    case 19:
-    case 20:
+    case 22:
+    case 23:
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-      case 19:
-        jj_consume_token(19);
+      case 22:
+        jj_consume_token(22);
         break;
-      case 20:
-        jj_consume_token(20);
+      case 23:
+        jj_consume_token(23);
         break;
       default:
-        jj_la1[2] = jj_gen;
+        jj_la1[3] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
-      jj_consume_token(21);
-      Condition();
-      jj_consume_token(22);
+      jj_consume_token(24);
+      ElementValues();
+      jj_consume_token(25);
       break;
     default:
-      jj_la1[3] = jj_gen;
+      jj_la1[4] = jj_gen;
       ;
     }
   }
 
-  static final public void Path() throws ParseException {
-                     /*@bgen(jjtree) Path */
-                     ASTPath jjtn000 = new ASTPath(JJTPATH);
-                     boolean jjtc000 = true;
-                     jjtree.openNodeScope(jjtn000);Token t;
+  static final public void FullPath() throws ParseException {
+                        /*@bgen(jjtree) Path */
+                        ASTPath jjtn000 = new ASTPath(JJTPATH);
+                        boolean jjtc000 = true;
+                        jjtree.openNodeScope(jjtn000);Token t;
     try {
       t = jj_consume_token(PATH);
-               jjtree.closeNodeScope(jjtn000, true);
-               jjtc000 = false;
-              jjtn000.setName(t.image);
+      switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+      case 24:
+        jj_consume_token(24);
+        SubCondition();
+        switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+        case ASTERISK:
+        case AND_OR:
+          switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+          case AND_OR:
+            label_2:
+            while (true) {
+              AndOr();
+              SubCondition();
+              switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+              case AND_OR:
+                ;
+                break;
+              default:
+                jj_la1[5] = jj_gen;
+                break label_2;
+              }
+            }
+            break;
+          case ASTERISK:
+            jj_consume_token(ASTERISK);
+            break;
+          default:
+            jj_la1[6] = jj_gen;
+            jj_consume_token(-1);
+            throw new ParseException();
+          }
+          break;
+        default:
+          jj_la1[7] = jj_gen;
+          ;
+        }
+        jj_consume_token(25);
+        break;
+      default:
+        jj_la1[8] = jj_gen;
+        ;
+      }
+                                                                         jjtree.closeNodeScope(jjtn000, true);
+                                                                         jjtc000 = false;
+                                                                        jjtn000.setName(t.image);
+    } catch (Throwable jjte000) {
+      if (jjtc000) {
+        jjtree.clearNodeScope(jjtn000);
+        jjtc000 = false;
+      } else {
+        jjtree.popNode();
+      }
+      if (jjte000 instanceof RuntimeException) {
+        {if (true) throw (RuntimeException)jjte000;}
+      }
+      if (jjte000 instanceof ParseException) {
+        {if (true) throw (ParseException)jjte000;}
+      }
+      {if (true) throw (Error)jjte000;}
     } finally {
       if (jjtc000) {
         jjtree.closeNodeScope(jjtn000, true);
@@ -228,7 +379,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
       SubCondition();
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
       case AND_OR:
-        label_1:
+        label_3:
         while (true) {
           AndOr();
           SubCondition();
@@ -237,15 +388,93 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
             ;
             break;
           default:
-            jj_la1[4] = jj_gen;
-            break label_1;
+            jj_la1[9] = jj_gen;
+            break label_3;
           }
         }
         break;
       default:
-        jj_la1[5] = jj_gen;
+        jj_la1[10] = jj_gen;
         ;
       }
+    } catch (Throwable jjte000) {
+      if (jjtc000) {
+        jjtree.clearNodeScope(jjtn000);
+        jjtc000 = false;
+      } else {
+        jjtree.popNode();
+      }
+      if (jjte000 instanceof RuntimeException) {
+        {if (true) throw (RuntimeException)jjte000;}
+      }
+      if (jjte000 instanceof ParseException) {
+        {if (true) throw (ParseException)jjte000;}
+      }
+      {if (true) throw (Error)jjte000;}
+    } finally {
+      if (jjtc000) {
+        jjtree.closeNodeScope(jjtn000, true);
+      }
+    }
+  }
+
+  static final public void ElementValues() throws ParseException {
+                                       /*@bgen(jjtree) ElementValues */
+  ASTElementValues jjtn000 = new ASTElementValues(JJTELEMENTVALUES);
+  boolean jjtc000 = true;
+  jjtree.openNodeScope(jjtn000);
+    try {
+      SubElementValue();
+      switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+      case 26:
+        label_4:
+        while (true) {
+          jj_consume_token(26);
+          SubElementValue();
+          switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+          case 26:
+            ;
+            break;
+          default:
+            jj_la1[11] = jj_gen;
+            break label_4;
+          }
+        }
+        break;
+      default:
+        jj_la1[12] = jj_gen;
+        ;
+      }
+    } catch (Throwable jjte000) {
+      if (jjtc000) {
+        jjtree.clearNodeScope(jjtn000);
+        jjtc000 = false;
+      } else {
+        jjtree.popNode();
+      }
+      if (jjte000 instanceof RuntimeException) {
+        {if (true) throw (RuntimeException)jjte000;}
+      }
+      if (jjte000 instanceof ParseException) {
+        {if (true) throw (ParseException)jjte000;}
+      }
+      {if (true) throw (Error)jjte000;}
+    } finally {
+      if (jjtc000) {
+        jjtree.closeNodeScope(jjtn000, true);
+      }
+    }
+  }
+
+  static final public void SubElementValue() throws ParseException {
+                                           /*@bgen(jjtree) SubElementValue */
+  ASTSubElementValue jjtn000 = new ASTSubElementValue(JJTSUBELEMENTVALUE);
+  boolean jjtc000 = true;
+  jjtree.openNodeScope(jjtn000);
+    try {
+      key();
+      jj_consume_token(27);
+      val();
     } catch (Throwable jjte000) {
       if (jjtc000) {
         jjtree.clearNodeScope(jjtn000);
@@ -273,19 +502,17 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
   boolean jjtc000 = true;
   jjtree.openNodeScope(jjtn000);
     try {
-      key();
-      CompareSign();
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
       case WORD:
+        key();
+        CompareSign();
         val();
         break;
-      case QUOTE:
-        jj_consume_token(QUOTE);
-        val();
-        jj_consume_token(QUOTE);
+      case ASTERISK:
+        asterisk();
         break;
       default:
-        jj_la1[6] = jj_gen;
+        jj_la1[13] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
@@ -344,6 +571,23 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
     }
   }
 
+  static final public void asterisk() throws ParseException {
+                             /*@bgen(jjtree) asterisk */
+                             ASTasterisk jjtn000 = new ASTasterisk(JJTASTERISK);
+                             boolean jjtc000 = true;
+                             jjtree.openNodeScope(jjtn000);Token t;
+    try {
+      t = jj_consume_token(ASTERISK);
+                   jjtree.closeNodeScope(jjtn000, true);
+                   jjtc000 = false;
+                  jjtn000.setName(t.image);
+    } finally {
+      if (jjtc000) {
+        jjtree.closeNodeScope(jjtn000, true);
+      }
+    }
+  }
+
   static final public void CompareSign() throws ParseException {
                                    /*@bgen(jjtree) CompareSign */
                                    ASTCompareSign jjtn000 = new ASTCompareSign(JJTCOMPARESIGN);
@@ -384,7 +628,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
                                  boolean jjtc000 = true;
                                  jjtree.openNodeScope(jjtn000);Token t;
     try {
-      t = jj_consume_token(23);
+      t = jj_consume_token(28);
       jj_consume_token(WORD);
                   jjtree.closeNodeScope(jjtn000, true);
                   jjtc000 = false;
@@ -406,13 +650,13 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
   static public Token jj_nt;
   static private int jj_ntk;
   static private int jj_gen;
-  static final private int[] jj_la1 = new int[7];
+  static final private int[] jj_la1 = new int[14];
   static private int[] jj_la1_0;
   static {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0x20,0x800000,0x180000,0x180000,0x40000,0x40000,0x440,};
+      jj_la1_0 = new int[] {0x20,0x800,0x10000000,0xc00000,0xc00000,0x100000,0x101000,0x101000,0x1000000,0x100000,0x100000,0x4000000,0x4000000,0x1400,};
    }
 
   /** Constructor with InputStream. */
@@ -433,7 +677,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 7; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -448,7 +692,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
     jj_ntk = -1;
     jjtree.reset();
     jj_gen = 0;
-    for (int i = 0; i < 7; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Constructor. */
@@ -465,7 +709,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 7; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -476,7 +720,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
     jj_ntk = -1;
     jjtree.reset();
     jj_gen = 0;
-    for (int i = 0; i < 7; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Constructor with generated Token Manager. */
@@ -492,7 +736,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 7; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -502,7 +746,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
     jj_ntk = -1;
     jjtree.reset();
     jj_gen = 0;
-    for (int i = 0; i < 7; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   static private Token jj_consume_token(int kind) throws ParseException {
@@ -553,12 +797,12 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
   /** Generate ParseException. */
   static public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[24];
+    boolean[] la1tokens = new boolean[29];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
     }
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 14; i++) {
       if (jj_la1[i] == jj_gen) {
         for (int j = 0; j < 32; j++) {
           if ((jj_la1_0[i] & (1<<j)) != 0) {
@@ -567,7 +811,7 @@ public class CustomParser/*@bgen(jjtree)*/implements CustomParserTreeConstants, 
         }
       }
     }
-    for (int i = 0; i < 24; i++) {
+    for (int i = 0; i < 29; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

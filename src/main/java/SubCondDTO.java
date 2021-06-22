@@ -2,10 +2,11 @@ public class SubCondDTO {
     public SubCondDTO() {
     }
 
-    public SubCondDTO(String key, String sign, String value) {
+    public SubCondDTO(String key, String sign, String utf_value, Integer int_value) {
         this.key = key;
         this.sign = sign;
-        this.value = value;
+        this.utf_value = utf_value;
+        this.int_value = int_value;
     }
 
     public String getKey() {
@@ -24,15 +25,24 @@ public class SubCondDTO {
         this.sign = sign;
     }
 
-    public String getValue() {
-        return value;
+    public String getUtf_value() {
+        return utf_value;
     }
 
-    public void setValue(String value) {
-        this.value = value;
+    public void setUtf_value(String utf_value) {
+        this.utf_value = utf_value;
+    }
+
+    public Integer getInt_value() {
+        return int_value;
+    }
+
+    public void setInt_value(Integer int_value) {
+        this.int_value = int_value;
     }
 
     private String key;
     private String sign;
-    private String value;
+    private String utf_value;
+    private Integer int_value;
 }

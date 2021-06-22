@@ -1,8 +1,7 @@
-public class ASTNewElement extends SimpleNode {
-
+public class ASTElementValues extends SimpleNode {
     private String name;
 
-    public ASTNewElement(int i) {
+    public ASTElementValues(int i) {
         super(i);
     }
 
@@ -11,7 +10,6 @@ public class ASTNewElement extends SimpleNode {
     }
 
     public String toString() {
-        return "New element key: " + name;
+        return "New element:";
     }
-
 }

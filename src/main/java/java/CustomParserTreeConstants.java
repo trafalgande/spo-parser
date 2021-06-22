@@ -7,12 +7,15 @@ public interface CustomParserTreeConstants
   public int JJTDIRORNODE = 3;
   public int JJTCOMMAND = 4;
   public int JJTCONDITION = 5;
-  public int JJTSUBCONDITION = 6;
-  public int JJTKEY = 7;
-  public int JJTVAL = 8;
-  public int JJTCOMPARESIGN = 9;
-  public int JJTANDOR = 10;
-  public int JJTNEWELEMENT = 11;
+  public int JJTELEMENTVALUES = 6;
+  public int JJTSUBELEMENTVALUE = 7;
+  public int JJTSUBCONDITION = 8;
+  public int JJTKEY = 9;
+  public int JJTVAL = 10;
+  public int JJTASTERISK = 11;
+  public int JJTCOMPARESIGN = 12;
+  public int JJTANDOR = 13;
+  public int JJTNEWELEMENT = 14;
 
 
   public String[] jjtNodeName = {
@@ -22,12 +25,15 @@ public interface CustomParserTreeConstants
     "DirOrNode",
     "Command",
     "Condition",
+    "ElementValues",
+    "SubElementValue",
     "SubCondition",
     "key",
     "val",
+    "asterisk",
     "CompareSign",
     "AndOr",
     "NewElement",
   };
 }
-/* JavaCC - OriginalChecksum=727a14c83839146317bdac5da75fa349 (do not edit this line) */
+/* JavaCC - OriginalChecksum=22619e1ee50d5a24cd11e9b218baaf3f (do not edit this line) */

@@ -11,7 +11,7 @@ public class ASTNewElement extends SimpleNode {
     }
 
     public String toString() {
-        return "New Element: " + name;
+        return "New element key: " + name;
     }
 
 }

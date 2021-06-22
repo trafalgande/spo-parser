@@ -22,10 +22,13 @@ public class CustomParser {
        }
        try {
            ASTStart root = customParser.Start();
-           root.dump("");
+//           root.dump("");
            JsonDTO jsonDTO = new JsonDTO();
+           ElementDTO elementDTO = null;
+           List paths = new ArrayList();
            com.google.gson.Gson gson = new com.google.gson.Gson();
            for(int i = 0; i < root.jjtGetNumChildren(); i++) {
+               String currentPath = "";
                Node current = root.jjtGetChild(i);
                    if (current.toString().contains(":")) {
                        String[] split = current.toString().split(":");
@@ -39,65 +42,144 @@ public class CustomParser {
                                   break;
                               }
                               case "Path" : {
-                                  jsonDTO.setPath(split[1].trim());
+                                  currentPath = split[1].trim().substring(1);
                                   break;
                               }
-                              case "New Element" : {
-                                  jsonDTO.setNelem(split[1].trim());
+                              case "New element key" : {
+                                  elementDTO = new ElementDTO();
+                                  elementDTO.setElementKey(split[1].trim());
+                                  break;
+                              }
+                              case "New element": {
+                                  if (current.jjtGetChild(0).jjtGetNumChildren() > 0) {
+                                      if (elementDTO == null) elementDTO = new ElementDTO();
+                                      List values = new ArrayList();
+                                      for (int h = 0; h < current.jjtGetNumChildren() ; h++) {
+                                          ElementInitValuesDTO valuesDTO = new ElementInitValuesDTO();
+                                          for(int g = 0; g < current.jjtGetChild(h).jjtGetNumChildren() ; g++) {
+                                              Node elementLeaf = current.jjtGetChild(h).jjtGetChild(g);
+                                               if (elementLeaf.toString().contains(":")) {
+                                                   String[] split_ = elementLeaf.toString().split(":");
+                                                   switch (split_[0]) {
+                                                       case "key" : {
+                                                           valuesDTO.setInit_value_key(split_[1].trim());
+                                                           break;
+                                                       }
+                                                       case "value" : {
+                                                           String utfval = split_[1].trim();
+                                                           try {
+                                                               Integer intval = Integer.parseInt(utfval);
+                                                               valuesDTO.setInt_value(intval);
+                                                           } catch (Exception e) {
+                                                               valuesDTO.setUtf_value(utfval);
+                                                           }
+                                                       }
+                                                   }
+                                               }
+                                            }
+                                            values.add(valuesDTO);
+                                      }
+
+                                      elementDTO.setElement_init_values(values);
+                                      elementDTO.setInit_values_n(values.size());
+                                  }
                                   break;
                               }
                           }
                    }
+                       ArrayList conds = null;
+                       ArrayList operators = null;
                    if (current.jjtGetNumChildren() > 0) {
-                       ArrayList list = new ArrayList();
-                       ArrayList condList = new ArrayList();
+                       operators = new ArrayList();
+                       conds = new ArrayList();
                        String and_or = "";
                    for(int j = 0; j < current.jjtGetNumChildren(); j++) {
                        Node subCurrent = current.jjtGetChild(j);
                          if ("and_or".equals(subCurrent.toString().split(":")[0])) {
                                                          and_or = subCurrent.toString().split(":")[1].trim();
-                                                         list.add("&&".equals(and_or) ? 1 : 0);
+                                                         operators.add("&&".equals(and_or) ? 1 : 0);
                                                   }
                        if (subCurrent.jjtGetNumChildren() > 0) {
                           SubCondDTO subCondDTO = new SubCondDTO();
                            for(int k = 0; k < subCurrent.jjtGetNumChildren(); k++) {
                                Node subSubCurrent = subCurrent.jjtGetChild(k);
-
                                 if (subSubCurrent.toString().contains(":")) {
                                   String[] split = subSubCurrent.toString().split(":");
                                   switch (split[0]) {
-                                      case "key" : {
+                                     case "key" : {
                                          subCondDTO.setKey(split[1].trim());
                                          break;
                                       }
                                      case "value" : {
-                                         subCondDTO.setValue(split[1].trim());
+                                         String val = split[1].trim();
+                                         try {
+                                             int intval = Integer.parseInt(val);
+                                             subCondDTO.setInt_value(intval);
+                                         } catch (Exception e) {
+                                             subCondDTO.setUtf_value(val);
+                                         }
                                          break;
                                      }
                                      case "Sign": {
                                          subCondDTO.setSign(split[1].trim());
                                          break;
                                      }
+                                     case "asterisk": {
+                                         currentPath = split[1].trim();
+                                         break;
+                                     }
                                   }
                               }
                            }
-                           jsonDTO.append(subCondDTO);
-                            jsonDTO.setGlobal_sign(list);
+                                conds.add(subCondDTO);
                        }
                    }
-
                }
-           }
-
+                   if (!"".equals(currentPath)) {
+                       switch (jsonDTO.getCmd()) {
+                       case "delete": {
+                         if (conds == null)
+                             jsonDTO.append(new PathDTO(currentPath));
+                         else if ("*".equals(currentPath))
+                            jsonDTO.append(new PathDTO(currentPath));
+                         else
+                            jsonDTO.append(new PathDTO(currentPath, conds, operators, conds.size()));
+                         break;
+                       }
+                       case "update":
+                       case "create":   {
+                           jsonDTO.append(new PathDTO(currentPath));
+                            break;
+                       }
+                       case "read": {
+                           if ((currentPath + ".").equals("..")) {
+                                   jsonDTO.setFrom_root(0);
+                           } else
+                            if (currentPath.contains(".")) {
+                                for (String s : currentPath.split("\\."))
+                                    jsonDTO.append(new PathDTO(s));
+                              } else if (conds == null)
+                                  jsonDTO.append(new PathDTO(currentPath));
+                              else if ("*".equals(currentPath))
+                                 jsonDTO.append(new PathDTO(currentPath));
+                              else
+                                 jsonDTO.append(new PathDTO(currentPath, conds, operators, conds.size()));
+                              break;
+                           }
+                       }
+                   }
+       }
+           jsonDTO.setNelem(elementDTO);
+           jsonDTO.setPaths_n(jsonDTO.getPaths()!= null ? jsonDTO.getPaths().size() : null);
            String json = gson.toJson(jsonDTO);
            System.out.println(json);
        } catch (Exception e) {
-//           System.out.print("\t[-] Wrong input\n>\t");
-           System.out.println(e.getMessage());
+           System.out.print("\t[-] Wrong input\n>\t");
+//           System.out.println(e.getMessage());
        }
+
     }
 }
-
 
 PARSER_END(CustomParser)
 
@@ -113,9 +195,10 @@ TOKEN : {
     | <#LETTER: ["a"-"z", "A"-"Z"] >
     | <#DIGIT: ["0"-"9"] >
     | <#DOT : "." >
-    | <WORD: (<LETTER>)+ | (<DIGIT>)+ >
-    | <PATH: <DOT> | (<WORD>(<DOT>)?)+ >
+    | <WORD: (<LETTER>)+ | (<DIGIT>)+>
+    | <PATH: <DOT><DOT> | <DOT> | ((<DOT> | <DOT><DOT>)<WORD>)+ >
 
+    | <ASTERISK : "*" >
     | <#eq: "=" >
     | <#neq: "!=" >
     | <#gt: ">" >
@@ -135,12 +218,12 @@ ASTStart Start() #Start : {}
 
 void Input() : {}
 {
-    Command() ( DirOrNode() )? Path()( NewElement() )?(("with value" | "with values") "[" Condition() "]")?
+    Command() ( DirOrNode() )? "$"( FullPath() )+ ( NewElement() )? (("with value" | "with values") "[" ElementValues() "]")?
 }
 
-void Path() #Path : {Token t;}
+void FullPath() #Path :{Token t;}
 {
-    t=<PATH> {jjtThis.setName(t.image);}
+    t=<PATH>["[" SubCondition() [(AndOr() SubCondition())+ | "*"] "]"] {jjtThis.setName(t.image);}
 }
 
 void DirOrNode() #DirOrNode : {Token t;}
@@ -158,9 +241,19 @@ void Condition() #Condition : {}
     SubCondition() [(AndOr() SubCondition())+]
 }
 
+void ElementValues() #ElementValues : {}
+{
+    SubElementValue() [("," SubElementValue())+]
+}
+
+void SubElementValue() #SubElementValue : {}
+{
+    key() "==" val()
+}
+
 void SubCondition() #SubCondition : {}
 {
-    key() CompareSign() (val() | <QUOTE> val() <QUOTE>)
+    (key() CompareSign() val()) | asterisk()
 }
 
 void key() #key : {Token t;}
@@ -171,6 +264,11 @@ void key() #key : {Token t;}
 void val() #val : {Token t;}
 {
     t=<WORD> {jjtThis.setName(t.image);}
+}
+
+void asterisk() #asterisk : {Token t;}
+{
+    t=<ASTERISK> {jjtThis.setName(t.image);}
 }
 
 

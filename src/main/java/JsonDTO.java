@@ -1,25 +1,32 @@
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class JsonDTO {
     private String cmd;
     private String param;
-    private String path;
-    private String nelem;
-    private List sub_cond;
+    private Integer paths_n;
+    private List paths;
     private List global_sign;
+    private ElementDTO nelem;
+    private int from_root = 1;
 
-    public JsonDTO(String cmd, String param, String path, String nelem, List sub_cond, List global_sign) {
-        this.cmd = cmd;
-        this.param = param;
-        this.path = path;
-        this.nelem = nelem;
-        this.sub_cond = sub_cond;
-        this.global_sign = global_sign;
+    public int getFrom_root() {
+        return from_root;
+    }
+
+    public void setFrom_root(int from_root) {
+        this.from_root = from_root;
     }
 
     public JsonDTO() {
+    }
+
+    public Integer getPaths_n() {
+        return paths_n;
+    }
+
+    public void setPaths_n(Integer paths_n) {
+        this.paths_n = paths_n;
     }
 
     public String getCmd() {
@@ -38,28 +45,12 @@ public class JsonDTO {
         this.param = param;
     }
 
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public String getNelem() {
+    public ElementDTO getNelem() {
         return nelem;
     }
 
-    public void setNelem(String nelem) {
+    public void setNelem(ElementDTO nelem) {
         this.nelem = nelem;
-    }
-
-    public List getSub_cond() {
-        return sub_cond;
-    }
-
-    public void setSub_cond(List sub_cond) {
-        this.sub_cond = sub_cond;
     }
 
     public List getGlobal_sign() {
@@ -70,10 +61,18 @@ public class JsonDTO {
         this.global_sign = global_sign;
     }
 
-    public void append(SubCondDTO item) {
-        if (this.getSub_cond() == null) {
-            this.setSub_cond(new ArrayList());
+    public List getPaths() {
+        return paths;
+    }
+
+    public void setPaths(List paths) {
+        this.paths = paths;
+    }
+
+    public void append(PathDTO item) {
+        if (this.getPaths() == null) {
+            this.setPaths(new ArrayList());
         }
-        this.getSub_cond().add(item);
+        this.getPaths().add(item);
     }
 }
